@@ -31,7 +31,7 @@ Elegant circular button fixed at bottom-right corner
 ## 🚀 Installation
 
 ### For Users (Chrome Web Store)
-*Might comen*
+*Might come*
 
 ### For Developers (Load Unpacked)
 
