@@ -1,0 +1,40 @@
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Chrome Extension Build Files
+*.zip
+*.crx
+*.pem
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# Node modules (if you add build tools later)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Temporary Files
+*.tmp
+*.temp
+*.log
+
+# Environment Variables (if you add them)
+.env
+.env.local
+
+# Distribution folder (if you create one)
+dist/
+build/

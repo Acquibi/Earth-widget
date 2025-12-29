@@ -1,18 +1,34 @@
+/**
+ * @fileoverview NASA EPIC Live Extension
+ * @author Acquibi (https://github.com/Acquibi)
+ * @copyright 2024 Acquibi. All rights reserved.
+ * Unauthorized use, duplication, or distribution is strictly prohibited.
+ */
+
 {
   "manifest_version": 3,
-  "name": "Earth Live - NASA EPIC",
-  "version": "1.0",
-  "author": "Acquibi",
-  "description": "Copyright (C) 2024 Acquibi. All Rights Reserved. A floating NASA Earth viewer.",
+  "name": "NASA Earth View",
+  "version": "1.0.0",
+  "description": "View live images of Earth from NASA's EPIC API with a beautiful glassmorphism interface",
+  "permissions": [
+    "activeTab"
+  ],
   "host_permissions": [
-    "https://api.nasa.gov/*"
+    "https://api.nasa.gov/*",
+    "https://epic.gsfc.nasa.gov/*"
   ],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
   ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
   "web_accessible_resources": [
     {
       "resources": ["styles.css"],
