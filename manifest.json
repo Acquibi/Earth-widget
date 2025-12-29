@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Earth Live - NASA EPIC",
+  "version": "1.0",
+  "author": "Acquibi",
+  "description": "Copyright (C) 2024 Acquibi. All Rights Reserved. A floating NASA Earth viewer.",
+  "host_permissions": [
+    "https://api.nasa.gov/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["styles.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
