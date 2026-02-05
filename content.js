@@ -1,26 +1,19 @@
 /**
- * @fileoverview NASA EPIC Live Extension
+ * @fileoverview Earth Live Stream Extension
  * @author Acquibi (https://github.com/Acquibi)
  * @copyright 2024 Acquibi. All rights reserved.
  * Unauthorized use, duplication, or distribution is strictly prohibited.
  */
 
-// NASA EPIC API Configuration
+// Live Stream Configuration
 const CONFIG = {
-  API_KEY: 'DEMO_KEY',
-  PRIMARY_API_URL: 'https://api.nasa.gov/EPIC/api/natural',
-  FALLBACK_API_URL: 'https://epic.gsfc.nasa.gov/api/natural',
-  CACHE_DURATION: 3600000, // 1 hour in milliseconds
-  ANIMATION_DELAY: 10,
-  CLOSE_ANIMATION_DURATION: 300,
-  MAX_RETRIES: 2,
-  RETRY_DELAY: 2000 // 2 seconds
-};
-
-// Cache for API responses
-const cache = {
-  data: null,
-  timestamp: 0
+  LIVE_STREAMS: [
+    { id: 'fO9e9jnhYK8', label: 'SEN Live' },
+    { id: '21X5lGlDOfg', label: 'NASA Live' },
+    { id: 'EEIk7gwjgIM', label: 'Earth From Space' }
+  ],
+  STREAM_HEALTH_CHECK_DELAY: 15000,
+  CLOSE_ANIMATION_DURATION: 300
 };
 
 // Create and inject the extension UI
@@ -64,7 +57,7 @@ const cache = {
     popup: popupWindow,
     closeBtn: popupWindow.querySelector('.close-btn'),
     loadingSpinner: popupWindow.querySelector('.loading-spinner'),
-    imageContainer: popupWindow.querySelector('.earth-image-container'),
+    videoContainer: popupWindow.querySelector('.earth-video-container'),
     errorMessage: popupWindow.querySelector('.error-message'),
     imageInfo: popupWindow.querySelector('.image-info')
   };
@@ -89,6 +82,10 @@ const cache = {
   // State management
   let isPopupOpen = false;
   let isLoading = false;
+  let player = null;
+  let currentStreamIndex = 0;
+  let healthCheckTimeout = null;
+  let lastPlayingTimestamp = 0;
 
   // Event listeners
   elements.button.addEventListener('click', togglePopup);
@@ -118,7 +115,7 @@ const cache = {
     
     // Only fetch if not already loading
     if (!isLoading) {
-      fetchEarthImage();
+      initLiveStream();
     }
   }
 
@@ -144,161 +141,177 @@ const cache = {
     });
   }
 
-  // Check if cache is valid
-  function isCacheValid() {
-    return cache.data && (Date.now() - cache.timestamp < CONFIG.CACHE_DURATION);
-  }
-
-  // Fetch and display Earth image
-  async function fetchEarthImage() {
-    if (isLoading) return;
-    
-    // Use cached data if available and valid
-    if (isCacheValid()) {
-      displayImage(cache.data);
-      return;
+  function loadYouTubeApi() {
+    if (window.YT && window.YT.Player) {
+      return Promise.resolve();
     }
 
+    if (window.__earthViewYouTubeApiPromise) {
+      return window.__earthViewYouTubeApiPromise;
+    }
+
+    window.__earthViewYouTubeApiPromise = new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(script);
+
+      window.onYouTubeIframeAPIReady = () => {
+        resolve();
+      };
+    });
+
+    return window.__earthViewYouTubeApiPromise;
+  }
+
+  function initLiveStream() {
+    if (isLoading) return;
     isLoading = true;
-    
-    // Show loading state
+
     setElementsVisibility({
       loadingSpinner: true,
-      imageContainer: false,
+      videoContainer: false,
       errorMessage: false,
       imageInfo: false
     });
 
-    // Try fetching with retries
-    let lastError = null;
-    
-    for (let attempt = 0; attempt <= CONFIG.MAX_RETRIES; attempt++) {
-      try {
-        const url = attempt === 0 
-          ? `${CONFIG.PRIMARY_API_URL}?api_key=${CONFIG.API_KEY}`
-          : CONFIG.FALLBACK_API_URL; // Fallback doesn't need API key
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+    loadYouTubeApi()
+      .then(() => {
+        createOrUpdatePlayer();
+      })
+      .catch(() => {
+        showError('Failed to load YouTube player. Please try again.');
+      });
+  }
 
-        const response = await fetch(url, { 
-          signal: controller.signal,
-          cache: 'default'
-        });
-        
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          if (response.status === 503) {
-            throw new Error('NASA API temporarily unavailable. Retrying...');
-          } else if (response.status === 429) {
-            throw new Error('Rate limit exceeded. Please try again later.');
-          }
-          throw new Error(`API Error: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (!Array.isArray(data) || data.length === 0) {
-          throw new Error('No images available');
-        }
-
-        // Cache the response
-        cache.data = data[0];
-        cache.timestamp = Date.now();
-
-        displayImage(cache.data);
-        return; // Success! Exit function
-
-      } catch (error) {
-        lastError = error;
-        console.warn(`Attempt ${attempt + 1} failed:`, error.message);
-        
-        // If not the last attempt, wait before retrying
-        if (attempt < CONFIG.MAX_RETRIES) {
-          await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY * (attempt + 1)));
-        }
-      }
+  function createOrUpdatePlayer() {
+    const stream = CONFIG.LIVE_STREAMS[currentStreamIndex];
+    if (!stream) {
+      showError('No live streams available right now.');
+      return;
     }
 
-    // All attempts failed
-    console.error('All fetch attempts failed:', lastError);
-    
-    const errorMsg = lastError.name === 'AbortError' 
-      ? 'Request timeout. Please check your internet connection and try again.' 
-      : lastError.message || 'Failed to fetch Earth image. Please try again later.';
-    
+    if (!elements.videoContainer.querySelector('.youtube-player')) {
+      const playerElement = document.createElement('div');
+      playerElement.id = 'earth-view-youtube-player';
+      playerElement.className = 'youtube-player';
+      elements.videoContainer.innerHTML = '';
+      elements.videoContainer.appendChild(playerElement);
+    }
+
+    if (!player) {
+      player = new window.YT.Player('earth-view-youtube-player', {
+        videoId: stream.id,
+        playerVars: {
+          autoplay: 1,
+          playsinline: 1,
+          modestbranding: 1,
+          rel: 0,
+          mute: 1,
+          origin: window.location.origin
+        },
+        events: {
+          onReady: () => handlePlayerReady(stream),
+          onStateChange: handlePlayerStateChange,
+          onError: handlePlayerError
+        }
+      });
+    } else {
+      player.loadVideoById({ videoId: stream.id });
+      handlePlayerReady(stream);
+    }
+  }
+
+  function handlePlayerReady(stream) {
+    isLoading = false;
+    lastPlayingTimestamp = Date.now();
+
+    setElementsVisibility({
+      loadingSpinner: false,
+      videoContainer: true,
+      imageInfo: true
+    });
+
+    elements.imageInfo.innerHTML = `
+      <div class="info-row">
+        <span class="info-label">Live Stream:</span>
+        <span class="info-value">${stream.label}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Status:</span>
+        <span class="info-value">Connecting...</span>
+      </div>
+    `;
+
+    scheduleHealthCheck();
+  }
+
+  function handlePlayerStateChange(event) {
+    const state = event.data;
+    const statusValue = elements.imageInfo.querySelector('.info-row:last-child .info-value');
+
+    if (state === window.YT.PlayerState.PLAYING) {
+      lastPlayingTimestamp = Date.now();
+      if (statusValue) statusValue.textContent = 'Live';
+    } else if (state === window.YT.PlayerState.BUFFERING) {
+      if (statusValue) statusValue.textContent = 'Buffering';
+    } else if (state === window.YT.PlayerState.PAUSED) {
+      if (statusValue) statusValue.textContent = 'Paused';
+    } else if (state === window.YT.PlayerState.ENDED || state === window.YT.PlayerState.UNSTARTED) {
+      switchToNextStream('Stream ended or did not start.');
+    }
+  }
+
+  function handlePlayerError(event) {
+    console.warn('YouTube player error:', event.data);
+    switchToNextStream('Stream error detected.');
+  }
+
+  function scheduleHealthCheck() {
+    clearTimeout(healthCheckTimeout);
+    healthCheckTimeout = setTimeout(() => {
+      const timeSincePlaying = Date.now() - lastPlayingTimestamp;
+      if (timeSincePlaying > CONFIG.STREAM_HEALTH_CHECK_DELAY) {
+        switchToNextStream('Stream is not responding.');
+      } else {
+        scheduleHealthCheck();
+      }
+    }, CONFIG.STREAM_HEALTH_CHECK_DELAY);
+  }
+
+  function switchToNextStream(reason) {
+    clearTimeout(healthCheckTimeout);
+    currentStreamIndex += 1;
+
+    if (currentStreamIndex >= CONFIG.LIVE_STREAMS.length) {
+      showError(`${reason} All fallback streams were tried.`);
+      return;
+    }
+
+    isLoading = false;
+    initLiveStream();
+  }
+
+  function showError(message) {
+    isLoading = false;
+
     setElementsVisibility({
       loadingSpinner: false,
       errorMessage: true
     });
-    
+
     elements.errorMessage.innerHTML = `
       <strong>Error</strong><br>
-      ${errorMsg}<br>
+      ${message}<br>
       <button class="retry-btn">Retry</button>
     `;
-    
-    // Add retry button listener
+
     const retryBtn = elements.errorMessage.querySelector('.retry-btn');
     if (retryBtn) {
       retryBtn.addEventListener('click', () => {
-        isLoading = false;
-        fetchEarthImage();
+        currentStreamIndex = 0;
+        initLiveStream();
       });
     }
-    
-    isLoading = false;
-  }
-
-  // Display image from data
-  function displayImage(imageData) {
-    const { image, date, caption_date } = imageData;
-    const [year, month, day] = date.split(' ')[0].split('-');
-    const imageUrl = `https://epic.gsfc.nasa.gov/archive/natural/${year}/${month}/${day}/png/${image}.png`;
-
-    // Create and configure image
-    const img = new Image();
-    img.className = 'earth-image';
-    img.alt = 'Earth from EPIC';
-    
-    img.onload = () => {
-      setElementsVisibility({
-        loadingSpinner: false,
-        imageContainer: true,
-        imageInfo: true
-      });
-      
-      elements.imageContainer.innerHTML = '';
-      elements.imageContainer.appendChild(img);
-      
-      // Update info
-      const displayDate = new Date(caption_date || date).toLocaleString('en-US', {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-      });
-      
-      elements.imageInfo.innerHTML = `
-        <div class="info-row">
-          <span class="info-label">Captured:</span>
-          <span class="info-value">${displayDate}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Satellite:</span>
-          <span class="info-value">DSCOVR</span>
-        </div>
-      `;
-    };
-
-    img.onerror = () => {
-      setElementsVisibility({
-        loadingSpinner: false,
-        errorMessage: true
-      });
-      elements.errorMessage.textContent = 'Failed to load image';
-    };
-
-    img.src = imageUrl;
   }
 })();
 
@@ -338,14 +351,14 @@ function createPopupWindow() {
     <div class="popup-content">
       <div class="loading-spinner">
         <div class="spinner"></div>
-        <p>Loading Earth image...</p>
+        <p>Loading live stream...</p>
       </div>
-      <div class="earth-image-container"></div>
+      <div class="earth-video-container"></div>
       <div class="error-message"></div>
       <div class="image-info"></div>
     </div>
     <div class="popup-footer">
-      <p>Data from NASA EPIC (DSCOVR satellite)</p>
+      <p>Live streams via YouTube</p>
     </div>
   `;
   return popup;
@@ -532,8 +545,8 @@ function getStyles() {
       font-size: 14px;
     }
 
-    /* Image Container */
-    .earth-image-container {
+    /* Video Container */
+    .earth-video-container {
       display: none;
       border-radius: 16px;
       overflow: hidden;
@@ -541,9 +554,10 @@ function getStyles() {
       border: 1px solid var(--border-color);
     }
 
-    .earth-image {
+    .youtube-player iframe,
+    .youtube-player {
       width: 100%;
-      height: auto;
+      aspect-ratio: 16 / 9;
       display: block;
       animation: fadeIn 0.5s ease;
     }
