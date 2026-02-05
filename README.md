@@ -1,6 +1,6 @@
-# 🌍 NASA EPIC Live Extension
+# 🌍 Earth Live Stream Extension
 
-A beautiful Chrome extension that displays live images of Earth from NASA's EPIC (Earth Polychromatic Imaging Camera) on the DSCOVR satellite. Features a stunning glassmorphism UI design with automatic light/dark theme adaptation.
+A beautiful Chrome extension that displays a live Earth stream in a stunning glassmorphism UI. It automatically adapts to light/dark themes and switches to backup live streams if the current one fails.
 
 ![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?style=flat&logo=googlechrome&logoColor=white)
 ![Manifest V3](https://img.shields.io/badge/Manifest-V3-green?style=flat)
@@ -8,11 +8,10 @@ A beautiful Chrome extension that displays live images of Earth from NASA's EPIC
 
 ## ✨ Features
 
-- 🌍 **Live NASA EPIC Images** - Real-time Earth imagery from space
+- 🌍 **Live Earth Stream** - Watch Earth from space in real time
 - 🎨 **Glassmorphism UI** - Modern frosted glass design
 - 🌓 **Auto Theme Detection** - Adapts to your system's light/dark theme
-- 🔄 **Smart Retry Logic** - Automatic fallback if API is unavailable
-- 💾 **Smart Caching** - Reduces API calls, faster loading
+- 🔄 **Smart Fallbacks** - Automatically switches to backup live streams
 - 🎯 **Shadow DOM** - No CSS conflicts with websites
 - ⌨️ **Keyboard Support** - Press ESC to close
 - 🚀 **60 FPS Animations** - Smooth transitions
@@ -58,25 +57,24 @@ Elegant circular button fixed at bottom-right corner
 ## 🎯 How to Use
 
 1. Click the floating Earth icon button (bottom-right corner)
-2. View the latest Earth image from NASA's EPIC camera
-3. See capture date and satellite information
+2. Watch the live Earth stream
+3. See the current stream label and status
 4. Press ESC or click X to close
-5. Images are cached for 1 hour for faster loading
+5. If a stream stops, the extension auto-switches to a backup
 
 ## 🛠️ Technical Details
 
 ### Architecture
 - **Manifest Version**: V3 (latest Chrome standard)
 - **Shadow DOM**: Complete CSS isolation
-- **API**: NASA EPIC API with automatic retry logic
-- **Caching**: 1-hour cache to reduce API calls
+- **Live Streams**: YouTube live streams with automatic failover
 - **Theme Detection**: Automatic light/dark mode adaptation
 
 ### Technologies Used
 - Manifest V3
 - Shadow DOM
 - CSS3 Glassmorphism (backdrop-filter)
-- Fetch API with AbortController
+- YouTube Iframe API
 - CSS Variables for theming
 - RequestAnimationFrame for animations
 
@@ -115,18 +113,13 @@ Edit the gradient in `content.js`:
 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 ```
 
-### Adjust Cache Duration
+### Customize Live Streams
 Edit `content.js`:
 ```javascript
-CACHE_DURATION: 3600000, // 1 hour in milliseconds
-```
-
-### Use Your Own API Key
-NASA's DEMO_KEY has limits (30/hour, 50/day). Get a free key at https://api.nasa.gov/
-
-Edit `content.js`:
-```javascript
-API_KEY: 'YOUR_API_KEY_HERE',
+LIVE_STREAMS: [
+  { id: 'fO9e9jnhYK8', label: 'SEN Live' },
+  { id: '21X5lGlDOfg', label: 'NASA Live' }
+]
 ```
 
 ## 🚨 Troubleshooting
@@ -136,21 +129,19 @@ API_KEY: 'YOUR_API_KEY_HERE',
 - Refresh the webpage
 - Check browser console (F12) for errors
 
-### Images Not Loading
+### Stream Not Playing
 - Check internet connection
-- API may be temporarily down (automatic retry will attempt fallback)
-- Rate limit reached (wait 1 hour or use your own API key)
-- Click the "Retry" button if shown
+- The current stream may be offline (automatic failover will try backups)
+- Click the "Retry" button if shown to restart from the primary stream
 
 ### Can't See Text (Light/Dark Theme Issue)
 - Extension auto-detects system theme
 - Verify latest version is installed
 - Try switching system theme and reopening popup
 
-### API Error 503
-- Extension automatically retries with fallback endpoint
-- Click "Retry" button in error message
-- If persistent, NASA API may be down (rare)
+### Stream Error
+- Extension automatically rotates through fallback streams
+- Click "Retry" in the error message to start over
 
 ## 🤝 Contributing
 
@@ -176,8 +167,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 This extension:
 - ✅ Does NOT collect any personal data
 - ✅ Does NOT track your browsing
-- ✅ Only communicates with NASA's public API
-- ✅ Stores no data except cached images (locally, temporarily)
+- ✅ Only loads YouTube live streams you configure
+- ✅ Stores no data locally
 
 ## 📄 License
 
@@ -185,14 +176,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🌟 Credits
 
-- **NASA EPIC**: Earth Polychromatic Imaging Camera on DSCOVR satellite
-- **Data Source**: NASA's publicly available EPIC imagery
+- **Live Streams**: YouTube live sources
 - **Developer**: [Acquibi](https://github.com/Acquibi)
 
 ## 🔗 Links
 
-- [NASA EPIC Website](https://epic.gsfc.nasa.gov/)
-- [NASA API Documentation](https://api.nasa.gov/)
+- [YouTube Live](https://www.youtube.com/live)
 - [Report Issues](https://github.com/Acquibi/nasa-epic-live-extension/issues)
 
 ## 💖 Support
